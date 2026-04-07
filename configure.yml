@@ -122,54 +122,37 @@
       no_log: false
 
     - name: Enable scheduler
-      ansible.builtin.command:
+      ansible.builtin.shell:
         chdir: "{{ bench_path }}"
-        cmd: "{{ bench_cmd }} --site {{ site_name }} scheduler enable"
+        cmd: bench --site {{ site_name }} scheduler enable
       become: true
       become_user: techmaju
 
     - name: Resume scheduler
-      ansible.builtin.command:
+      ansible.builtin.shell:
         chdir: "{{ bench_path }}"
-        cmd: "{{ bench_cmd }} --site {{ site_name }} scheduler resume"
-      become: true
-      become_user: techmaju
-
-    - name: Read installed apps
-      ansible.builtin.command:
-        chdir: "{{ bench_path }}"
-        cmd: "{{ bench_cmd }} --site {{ site_name }} list-apps"
-      register: installed_apps
-      changed_when: false
-      become: true
-      become_user: techmaju
-
-    - name: Install app when not installed
-      ansible.builtin.command:
-        chdir: "{{ bench_path }}"
-        cmd: "{{ bench_cmd }} --site {{ site_name }} install-app {{ app_name }}"
-      when: app_name not in installed_apps.stdout_lines
+        cmd: bench --site {{ site_name }} scheduler resume
       become: true
       become_user: techmaju
 
     - name: Set developer mode off
-      ansible.builtin.command:
+      ansible.builtin.shell:
         chdir: "{{ bench_path }}"
-        cmd: "{{ bench_cmd }} --site {{ site_name }} set-config developer_mode 0"
+        cmd: bench --site {{ site_name }} set-config developer_mode 0
       become: true
       become_user: techmaju
 
     - name: Clear cache
-      ansible.builtin.command:
+      ansible.builtin.shell:
         chdir: "{{ bench_path }}"
-        cmd: "{{ bench_cmd }} --site {{ site_name }} clear-cache"
+        cmd: bench_cmd --site {{ site_name }} clear-cache
       become: true
       become_user: techmaju
 
     - name: Setup nginx config
       ansible.builtin.shell:
         chdir: "{{ bench_path }}"
-        cmd: "yes | {{ bench_cmd }} setup nginx"
+        cmd: yes |  bench_cmd  setup nginx
       args:
         executable: /bin/bash
       become: true
@@ -181,7 +164,7 @@
       when: run_certbot
 
     - name: Activate SSL certificate via Certbot
-      ansible.builtin.command:
+      ansible.builtin.shell:
         chdir: "{{ bench_path }}"
         cmd: >-
           certbot --nginx --non-interactive --agree-tos
@@ -192,8 +175,8 @@
       when: run_certbot
 
     - name: Restart bench services
-      ansible.builtin.command:
+      ansible.builtin.shell:
         chdir: "{{ bench_path }}"
-        cmd: "{{ bench_cmd }} restart"
+        cmd: bench restart
       become: true
       become_user: techmaju

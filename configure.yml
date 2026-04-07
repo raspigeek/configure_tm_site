@@ -119,7 +119,7 @@
               --db-root-password {{ sql_root_password }}
               --admin-password {{ admin_password }}
       when: not site_config.stat.exists
-      no_log: true
+      no_log: false
 
     - name: Enable scheduler
       ansible.builtin.command:

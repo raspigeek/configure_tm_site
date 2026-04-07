@@ -111,10 +111,10 @@
           no_log: true
 
         - name: Create Frappe site
-          ansible.builtin.command:
+          ansible.builtin.shell:
             chdir: "{{ bench_path }}"
             cmd: >-
-              {{ bench_cmd }} new-site {{ site_name }}
+              bench new-site {{ site_name }}
               --db-root-username root
               --db-root-password {{ sql_root_password }}
               --admin-password {{ admin_password }}

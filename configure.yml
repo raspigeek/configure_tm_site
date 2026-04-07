@@ -145,14 +145,14 @@
     - name: Clear cache
       ansible.builtin.shell:
         chdir: "{{ bench_path }}"
-        cmd: bench_cmd --site {{ site_name }} clear-cache
+        cmd: bench --site {{ site_name }} clear-cache
       become: true
       become_user: techmaju
 
     - name: Setup nginx config
       ansible.builtin.shell:
         chdir: "{{ bench_path }}"
-        cmd: yes |  bench_cmd  setup nginx
+        cmd: yes |  bench  setup nginx
       args:
         executable: /bin/bash
       become: true

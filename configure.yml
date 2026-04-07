@@ -1,0 +1,105 @@
+- name: Configure Frappe site {{ SITE_NAME }}
+  hosts: all
+  vars:
+    site_name: "{{ SITE_NAME }}"
+    bench_path: /home/techmaju/frappe-bench
+    sql_password_file: /home/techmaju/.sqlpasswrd
+    admin_password_file: /home/techmaju/.adminpasswrd
+
+  pre_tasks:
+    - name: Validate required variables
+      ansible.builtin.assert:
+        that:
+          - site_name is defined
+          - site_name | length > 0
+        fail_msg: "SITE_NAME is required and must not be empty"
+
+  tasks:
+    - name: Check SQL root password file
+      ansible.builtin.stat:
+        path: "{{ sql_password_file }}"
+      register: sqlpasswdfile
+
+    - name: Fail when SQL root password file is missing
+      ansible.builtin.fail:
+        msg: "SQL root password file {{ sql_password_file }} was not found"
+      when: not sqlpasswdfile.stat.exists
+
+    - name: Install and configure site
+      when: sqlpasswdfile.stat.exists
+      block:
+        - name: Read SQL root password
+          ansible.builtin.slurp:
+            src: "{{ sql_password_file }}"
+          register: sqlpasswd
+
+        - name: Register SQL root password
+          ansible.builtin.set_fact:
+            sql_root_password: "{{ sqlpasswd.content | b64decode | trim }}"
+
+        - name: Generate admin password
+          ansible.builtin.set_fact:
+            admin_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20, chars=['ascii_letters', 'digits']) }}"
+            cacheable: true
+
+        - name: Store admin password on target host
+          ansible.builtin.lineinfile:
+            path: "{{ admin_password_file }}"
+            line: "{{ admin_password }}"
+            state: present
+            create: true
+            owner: techmaju
+            group: techmaju
+            mode: "0600"
+
+        - name: Create site
+          ansible.builtin.command:
+            chdir: "{{ bench_path }}"
+            cmd: >-
+              bench new-site {{ site_name }}
+              --db-root-username root
+              --db-root-password {{ sql_root_password }}
+              --admin-password {{ admin_password }}
+            creates: "{{ bench_path }}/sites/{{ site_name }}/site_config.json"
+
+        - name: Enable and resume scheduler
+          ansible.builtin.shell:
+            chdir: "{{ bench_path }}"
+            cmd: |
+              bench --site {{ site_name }} scheduler enable
+              bench --site {{ site_name }} scheduler resume
+
+        - name: Install techmaju_core app
+          ansible.builtin.shell:
+            chdir: "{{ bench_path }}"
+            cmd: |
+              source ~/.profile
+              bench --site {{ site_name }} install-app techmaju_core
+              bench --site {{ site_name }} set-config developer_mode 0
+              bench --site {{ site_name }} clear-cache
+          args:
+            executable: /bin/bash
+
+        - name: Setup nginx config
+          ansible.builtin.shell:
+            chdir: "{{ bench_path }}"
+            cmd: |
+              yes | bench setup nginx
+        - name: Pause 5 minutes. Let's Encrypt can not issue certificate immediately after dns creation.
+          ansible.builtin.pause:
+            minutes: 5               
+        - name: Activate ssl certificate via Certbot
+          ansible.builtin.shell:
+            chdir: /home/techmaju/frappe-bench
+            cmd: |
+              certbot --nginx --non-interactive --agree-tos --email {{EMAIL_ADDRESS}} -d {{SITE_NAME}}                                    
+          become_user: root
+          when: safeline_enabled == false
+
+        - name: Restart bench services
+          ansible.builtin.shell:
+            chdir: "{{ bench_path }}"
+            cmd: |
+              bench restart
+      become_user: techmaju
+      become: true

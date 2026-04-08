@@ -160,7 +160,7 @@
 
     - name: Pause before requesting certificate
       ansible.builtin.pause:
-        minutes: 5
+        minutes: 10
       when: run_certbot
 
     - name: Activate SSL certificate via Certbot

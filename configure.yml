@@ -28,7 +28,6 @@
     bench_path: /home/techmaju/frappe-bench
     sql_password_file: /home/techmaju/.sqlpasswrd
     admin_password_file: /home/techmaju/.adminpasswrd
-    app_name: techmaju_core
     run_certbot: "{{ enable_certbot | default(not (safeline_enabled | default(false) | bool)) | bool }}"
 
   pre_tasks:
@@ -118,9 +117,20 @@
               --db-root-username root
               --db-root-password {{ sql_root_password }}
               --admin-password {{ admin_password }}
+        - name: Install Techmaju Core
+          ansible.builtin.shell:
+            chdir: "{{ bench_path }}"
+            cmd: |              
+              source ~/.profile              
+              bench --site {{ site_name }} install-app techmaju_core
+              bench update --apps techmaju_core --no-backup --reset
+          args:
+            executable: /bin/bash
+          become: true
+          become_user: techmaju
+
       when: not site_config.stat.exists
       no_log: false
-
     - name: Enable scheduler
       ansible.builtin.shell:
         chdir: "{{ bench_path }}"
@@ -135,10 +145,10 @@
       become: true
       become_user: techmaju
 
-    - name: Set developer mode off
+    - name: Set developer mode 
       ansible.builtin.shell:
         chdir: "{{ bench_path }}"
-        cmd: bench --site {{ site_name }} set-config developer_mode 0
+        cmd: bench --site {{ site_name }} set-config developer_mode {{ DEV_MODE }}
       become: true
       become_user: techmaju
 
